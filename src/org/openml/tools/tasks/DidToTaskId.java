@@ -39,7 +39,7 @@ public class DidToTaskId {
 			
 			for (Quality q : dq.getQualities()) {
 				if (q.getName().equals("NumberOfInstances")) {
-					numInstances = (int) Double.parseDouble(q.getValue());
+					numInstances = q.getValue().intValue();
 				}
 			}
 			
