@@ -45,12 +45,10 @@ public class DeactivateUnparsableDatasets {
 			}
 			DataSetDescription dsd = live_client_read.dataGet(current.getDid());
 			DataSetDescription dsdNew = new DataSetDescription(dsd.getName(), dsd.getDefault_target_attribute(), dsd.getFormat(), dsd.getDefault_target_attribute());
-			File dsdFile = Conversion.stringToTempFile(xstream.toXML(dsdNew), "did-" + current.getDid(), "arff");
 			File dataset = live_client_read.datasetGet(dsd);
 			
-			
 			try {
-				test_client_write.dataUpload(dsdFile, dataset);
+				test_client_write.dataUpload(dsdNew, dataset);
 			} catch(ApiException api) {
 				if (api.getCode() == 145) {
 					unparsable.add(current.getDid());

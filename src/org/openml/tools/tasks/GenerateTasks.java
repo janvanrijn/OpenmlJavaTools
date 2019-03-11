@@ -3,19 +3,13 @@ package org.openml.tools.tasks;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.openml.apiconnector.algorithms.Conversion;
 import org.openml.apiconnector.io.ApiException;
 import org.openml.apiconnector.io.OpenmlConnector;
 import org.openml.apiconnector.xml.DataSetDescription;
 import org.openml.apiconnector.xml.TaskInputs;
 import org.openml.apiconnector.xml.TaskInputs.Input;
-import org.openml.apiconnector.xstream.XstreamXmlMapping;
-
-import com.thoughtworks.xstream.XStream;
 
 public class GenerateTasks {
-	
-	private static final XStream xstream = XstreamXmlMapping.getInstance();
 	
 	public static void main(String[] args) throws Exception {
 		OpenmlConnector connector = new OpenmlConnector("https://test.openml.org/", "8baa83ecddfe44b561fd3d92442e3319");
@@ -48,9 +42,8 @@ public class GenerateTasks {
 				Input[] inputs = {source_data, estimation_procedure, target_feature};
 				
 				TaskInputs task = new TaskInputs(null, ttid, inputs, null);
-				String taskAsString = xstream.toXML(task);
 				try {
-					connector.taskUpload(Conversion.stringToTempFile(taskAsString, "task", "xml"));
+					connector.taskUpload(task);
 				} catch(ApiException e) {
 					if (e.getCode() != 533) {
 						throw e;
