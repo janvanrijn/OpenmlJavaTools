@@ -3,6 +3,7 @@ package org.openml.tools.run;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -15,6 +16,8 @@ import org.apache.commons.lang3.ArrayUtils;
 import org.openml.apiconnector.algorithms.TaskInformation;
 import org.openml.apiconnector.io.OpenmlConnector;
 import org.openml.apiconnector.settings.Config;
+import org.openml.apiconnector.xml.DataSetDescription;
+import org.openml.apiconnector.xml.EstimationProcedure;
 import org.openml.apiconnector.xml.Task;
 
 import weka.classifiers.Classifier;
@@ -60,28 +63,26 @@ public class GeneratePredictions {
 		}
 
 		Task t = apiconnector.taskGet(task_id);
-
-		String datasetPath = TaskInformation.getSourceData(t).getDataSetDescription(apiconnector).getUrl();
+		DataSetDescription dsd = apiconnector.dataGet(TaskInformation.getSourceData(t).getData_set_id());
 		URL splitsPath = TaskInformation.getEstimationProcedure(t).getData_splits_url();
 		String classAttribute = TaskInformation.getSourceData(t).getTarget_feature();
-		Integer repeats = TaskInformation.getNumberOfRepeats(t);
-		Integer folds = TaskInformation.getNumberOfFolds(t);
+		int epId = TaskInformation.getEstimationProcedure(t).getId();
+		EstimationProcedure ep = apiconnector.estimationProcedureGet(epId);
 
 		int nrOfPredictions = 0;
 		boolean regression;
 
-		dataset = new Instances(new BufferedReader(getURL(new URL(datasetPath))));
+		dataset = new Instances(new FileReader(apiconnector.datasetGet(dsd)));
 		splits = new Instances(new BufferedReader(getURL(splitsPath)));
 		empty = new Instances(dataset);
 		empty.delete();
 
-		writer = new BufferedWriter(new FileWriter(
-				new File("data/output/predictions_" + datasetPath.substring(datasetPath.lastIndexOf('/') + 1))));
-		sets = new ArrayList[2][repeats][folds];
+		writer = new BufferedWriter(new FileWriter(new File("data/output/predictions_" + dsd.getName())));
+		sets = new ArrayList[2][ep.getRepeats()][ep.getFolds()];
 
 		for (int i = 0; i < 2; i++)
-			for (int j = 0; j < repeats; j++)
-				for (int k = 0; k < folds; k++)
+			for (int j = 0; j < ep.getRepeats(); j++)
+				for (int k = 0; k < ep.getFolds(); k++)
 					sets[i][j][k] = new ArrayList<Integer>();
 
 		ATT_SPLITS_REPEAT = splits.attribute("repeat").index();
@@ -119,8 +120,8 @@ public class GeneratePredictions {
 		predictions = new Instances(dataset.relationName() + "-predictions", generateAttributes(classes, regression),
 				nrOfPredictions);
 
-		for (int j = 0; j < repeats; j++) {
-			for (int k = 0; k < folds; k++) {
+		for (int j = 0; j < ep.getRepeats(); j++) {
+			for (int k = 0; k < ep.getFolds(); k++) {
 				if (regression) {
 					classifier = new Logistic();
 				} else {
