@@ -12,21 +12,13 @@ import org.openml.apiconnector.xml.TaskInputs.Input;
 public class GenerateTasks {
 	
 	public static void main(String[] args) throws Exception {
-		OpenmlConnector connector = new OpenmlConnector("https://test.openml.org/", "8baa83ecddfe44b561fd3d92442e3319");
+		OpenmlConnector connector = new OpenmlConnector("https://www.openml.org/", "48830dd663e41d5cb689016a072e6ec1");
 		connector.setVerboseLevel(1);
 		List<Integer> dataset_ids = new ArrayList<Integer>();
-		for (int i = 1; i <= 100; ++i) {
-			dataset_ids.add(i);
-		}
+		dataset_ids.add(41496);
 
-		Integer[] tt1_ep = {1, 2, 3, 4, 5, 6};
+		Integer[] tt1_ep = {1, 2, 3, 4, 5, 6, 26};
 		generateTaskType(1, dataset_ids, tt1_ep, connector);
-		
-		Integer[] tt3_ep = {13, 14};
-		generateTaskType(3, dataset_ids, tt3_ep, connector);
-		
-		Integer[] tt4_ep = {15};
-		generateTaskType(4, dataset_ids, tt4_ep, connector);
 	}
 	
 	public static void generateTaskType(Integer ttid, List<Integer> dataset_ids, 

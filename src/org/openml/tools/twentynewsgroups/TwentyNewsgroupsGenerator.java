@@ -225,7 +225,6 @@ public class TwentyNewsgroupsGenerator {
 			return res;
 		}
 		
-		@Override
 		public int compareTo( Document o ) {
 			int self = Integer.parseInt( name );
 			int other = Integer.parseInt( o.name );

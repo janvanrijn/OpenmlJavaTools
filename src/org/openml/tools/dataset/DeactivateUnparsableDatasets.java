@@ -37,7 +37,7 @@ public class DeactivateUnparsableDatasets {
 		Map<String, String> filters = new TreeMap<String, String>();
 		filters.put("status", "in_preparation");
 		Data data = live_client_read.dataList(filters);
-		List<Integer> unparsable = new ArrayList<>();
+		List<Integer> unparsable = new ArrayList<Integer>();
 		
 		for (DataSet current : data.getData()) {
 			if (current.getDid() < start_did) { 

@@ -12,7 +12,7 @@ import weka.core.converters.ArffLoader;
 public class UploadDataset {
 
 	private static final ArffLoader loader = new ArffLoader();
-	private static final String directory = "/Users/jan/Desktop/test/";
+	private static final String directory = "/home/janvanrijn/data/";
 
 	private final OpenmlConnector apiconnector;
 

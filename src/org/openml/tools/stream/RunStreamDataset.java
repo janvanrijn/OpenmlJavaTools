@@ -176,7 +176,7 @@ public class RunStreamDataset {
 		}
 		
 		Classifier metaLearner = new RandomForest();
-		((RandomForest) metaLearner).setNumTrees( 100 );
+		((RandomForest) metaLearner).setNumIterations( 100 );
 		((RandomForest) metaLearner).setNumFeatures( 10 );
 		
 		Classifier baseline = new ZeroR();

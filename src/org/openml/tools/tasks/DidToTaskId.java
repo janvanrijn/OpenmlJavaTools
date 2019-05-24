@@ -4,14 +4,12 @@ import java.util.HashSet;
 import java.util.Set;
 
 import org.openml.apiconnector.io.ApiException;
-import org.openml.apiconnector.io.OpenmlConnector;
 import org.openml.apiconnector.settings.Config;
-import org.openml.apiconnector.xml.DataQuality;
-import org.openml.apiconnector.xml.DataQuality.Quality;
 import org.openml.apiconnector.xml.DataSetDescription;
-import org.openml.apiconnector.xml.Study;
 import org.openml.apiconnector.xml.TaskInputs;
 import org.openml.apiconnector.xml.TaskInputs.Input;
+import org.openml.webapplication.ProcessDataset;
+import org.openml.weka.io.OpenmlWekaConnector;
 
 public class DidToTaskId {
 
@@ -19,29 +17,30 @@ public class DidToTaskId {
 	
 	public static void main(String[] args) throws Exception {
 		Config c = new Config();
-		OpenmlConnector openmlConnector = new OpenmlConnector( c.getApiKey() );
+		OpenmlWekaConnector openmlConnector = new OpenmlWekaConnector( "https://test.openml.org/", "d488d8afd93b32331cf6ea9d7003d4c3" );
 		
-		Study s = openmlConnector.studyGet(14, "data");
+		// Study s = openmlConnector.studyGet(14, "data");
+		//Integer[] dids = {44327};
 		
-		System.out.println("searching for: " + s.getDataset().length);
-		for (Integer dataset_id : s.getDataset()) {
-			DataSetDescription dsd = openmlConnector.dataGet(dataset_id);
-			DataQuality dq = openmlConnector.dataQualities(dsd.getId(), 1);
-			int numInstances = -1;
-			
-			for (Quality q : dq.getQualities()) {
-				if (q.getName().equals("NumberOfInstances")) {
-					numInstances = q.getValue().intValue();
+		//System.out.println("searching for: " + s.getDataset().length);
+		for (int did = 1; did <= 100; ++ did) {
+			DataSetDescription dsd = openmlConnector.dataGet(did);
+			try {
+				openmlConnector.dataQualities(dsd.getId(), 1);
+				openmlConnector.dataFeatures(dsd.getId());
+			} catch(ApiException e) {
+				try {
+					new ProcessDataset(openmlConnector, did, null);
+				} catch(Exception ee) {
+					continue;
 				}
 			}
 			
-			if (numInstances == -1) continue;
-			
-			Input estimation_procedure = new Input("estimation_procedure", "6");
-			Input data_set = new Input("source_data", dataset_id + "");
+			Input estimation_procedure = new Input("estimation_procedure", "28");
+			Input data_set = new Input("source_data", did + "");
 			Input target_feature = new Input("target_feature", dsd.getDefault_target_attribute());
-			Input evaluation_measure = new Input("evaluation_measures", "predictive_accuracy");
-			Input[] inputs = {estimation_procedure, data_set, target_feature, evaluation_measure};
+			//Input evaluation_measure = new Input("evaluation_measures", "predictive_accuracy");
+			Input[] inputs = {estimation_procedure, data_set, target_feature};
 			
 			TaskInputs task = new TaskInputs(null, 1, inputs, null); 
 			
@@ -51,8 +50,7 @@ public class DidToTaskId {
 			} catch(ApiException e) {
 				System.out.println(e.getMessage());
 				String id = e.getMessage().substring(e.getMessage().indexOf('[') + 1, e.getMessage().indexOf(']'));
-				taskIds.add(Integer.parseInt(id));
-				
+				taskIds.add(Integer.parseInt(id));	
 			}
 		}
 		System.out.println(taskIds.size() + ": " + taskIds);
