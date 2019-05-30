@@ -4,17 +4,18 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.openml.apiconnector.io.OpenmlConnector;
 import org.openml.apiconnector.xml.DataSetDescription;
 import org.openml.apiconnector.xml.Study;
 import org.openml.apiconnector.xml.TaskInputs;
 import org.openml.apiconnector.xml.TaskInputs.Input;
+import org.openml.webapplication.ProcessDataset;
+import org.openml.weka.io.OpenmlWekaConnector;
 
 public class UploadDatasetFromDir {
 	
 	private static final String SERVER = "https://test.openml.org/";
-	private static final String APIKEY = "xxx";
-	private static final OpenmlConnector openml = new OpenmlConnector(SERVER, APIKEY);
+	private static final String APIKEY = "d488d8afd93b32331cf6ea9d7003d4c3";
+	private static final OpenmlWekaConnector openml = new OpenmlWekaConnector(SERVER, APIKEY);
 	
 	private static final String[] TAGS = {"forex", "finance"};
 	private static final File DIRECTORY = new File("/Users/janvanrijn/data/arff_forex");
@@ -59,6 +60,8 @@ public class UploadDatasetFromDir {
 			for (String tag : TAGS) {
 				openml.dataTag(did, tag);
 			}
+			// automatically processes and activates dataset
+			new ProcessDataset(openml, did, null);
 			Input[] inputs = {
 				new Input("source_data", "" + did),
 				new Input("estimation_procedure", "28"),
