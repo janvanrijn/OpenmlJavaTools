@@ -1,12 +1,16 @@
 package org.openml.tools.dataset;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.apache.commons.lang3.tuple.ImmutableTriple;
+import org.apache.commons.lang3.tuple.Triple;
 import org.openml.apiconnector.algorithms.Conversion;
 import org.openml.apiconnector.io.ApiException;
 import org.openml.apiconnector.xml.Data;
@@ -53,14 +57,14 @@ public class UploadDatasetFromDir {
 			"`Class`: Whether the average price will go up during the next interval";
 	
 	public static void main(String[] args) throws Exception {
-		uploadDataMakeTasks();
-		generateStudy();
+		//uploadData();
+		//makeTasks();
+		addToStudy(219);
 	}
 	
-	private static void uploadDataMakeTasks() throws Exception {
+	private static void uploadData() throws Exception {
 		Map<String, String> filters = new HashMap<String, String>();
 		filters.put("tag", "forex");
-		
 		
 		Map<String, Integer> dataNameId = new HashMap<String, Integer>();
 		try {
@@ -74,13 +78,13 @@ public class UploadDatasetFromDir {
 		for (File dataset : DIRECTORY.listFiles()) {
 			// assemble some basic properties
 			String nameVanilla = dataset.getName().split("\\.")[0];
-			String[] nameParts = nameVanilla.split("_")[1].split("-");
-			String pair = nameParts[0].substring(0, 3) + '/' + nameParts[0].substring(3);
-			String note = nameParts[2].contentEquals("Close") ? "" : "**Note that this is a hypothetical task, meant for scientific purposes only. Realistic trade strategies can only be applied to predictions on 'Close'-attributes (also available).\n"; 
-			String description = DESCRIPTION.replace("$pair", pair.toUpperCase()).replace("$interval", nameParts[1]).replace("$type", nameParts[2]).replace("$note", note);
+			Triple<String, String, String> nameParts = splitName(nameVanilla);
+			
+			String note = nameParts.getRight().contentEquals("Close") ? "" : "**Note that this is a hypothetical task, meant for scientific purposes only. Realistic trade strategies can only be applied to predictions on 'Close'-attributes (also available).\n"; 
+			String description = DESCRIPTION.replace("$pair", nameParts.getLeft().toUpperCase()).replace("$interval", nameParts.getMiddle()).replace("$type", nameParts.getRight()).replace("$note", note);
 			
 			DataSetDescription dsd = new DataSetDescription(nameVanilla, description, "arff", "Class");
-			final String[] TAGS = {"finance", "forex", "forex_" + nameParts[1].toLowerCase(), "forex_" + nameParts[2].toLowerCase()};
+			final String[] TAGS = {"finance", "forex", "forex_" + nameParts.getMiddle().toLowerCase(), "forex_" + nameParts.getRight().toLowerCase()};
 			for (String tag : TAGS) {
 				dsd.addTag(tag);
 			}
@@ -92,6 +96,7 @@ public class UploadDatasetFromDir {
 			if (dataNameId.containsKey(nameVanilla)) {
 				did = dataNameId.get(nameVanilla);
 				Conversion.log("OK", "Skip", "Skipping data upload of " + nameVanilla + " - did = " + did);
+				continue;
 			} else {
 				did = openml.dataUpload(dsd, dataset);
 			}
@@ -100,30 +105,70 @@ public class UploadDatasetFromDir {
 			try {
 				new ProcessDataset(openml, did, null);
 			} catch(ApiException e) {}
-			
-			Input[] inputs = {
-				new Input("source_data", "" + did),
-				new Input("estimation_procedure", "28"),
-				new Input("target_feature", dsd.getDefault_target_attribute()),
-			};
-			TaskInputs ti = new TaskInputs(null, 1, inputs, TAGS);
-			
-			// obtain task id, catch if it was already uploaded
-			try {
-				openml.taskUpload(ti);
-			} catch(ApiException ae) {}
 		}
 	}
 	
+	private static void makeTasks() throws Exception {
+		Map<String, String> filters = new HashMap<String, String>();
+		filters.put("tag", "forex");
+		Data data = openml.dataList(filters);
+		
+		for (DataSet ds : data.getData()) {
+			Triple<String, String, String> nameParts = splitName(ds.getName());
+			final String[] TAGS = {"finance", "forex", "forex_" + nameParts.getMiddle().toLowerCase(), "forex_" + nameParts.getRight().toLowerCase()};
+			Input[] inputs = {
+				new Input("source_data", "" + ds.getDid()),
+				new Input("estimation_procedure", "28"),
+				new Input("target_feature", "Class"),
+			};
+			TaskInputs ti = new TaskInputs(null, 1, inputs, TAGS);
+			// obtain task id, catch if it was already uploaded
+			try {
+				openml.taskUpload(ti);
+			} catch(ApiException ae) {
+				int taskId = Integer.parseInt(ae.getMessage().replaceAll("[\\D]", ""));
+				Conversion.log("OK", "Skip", "Skipping task creation of dataset " + ds.getDid() + "; task id = " + taskId);
+				/*Task t = openml.taskGet(taskId);
+				Set<String> taskTags = new TreeSet<String>(Arrays.asList(t.getTags()));
+				Set<String> allTags = new TreeSet<String>(Arrays.asList(TAGS));
+				if (!taskTags.equals(allTags)) {
+					allTags.removeAll(taskTags);
+					for (String tag : allTags) {
+						try {
+							openml.taskTag(taskId, tag);
+						} catch(ApiException ae2) {
+							
+						}
+					}
+				}*/
+			}
+		}
+	}
+	
+	private static void addToStudy(Integer studyId) throws Exception {
+		Study s = openml.studyGet(studyId);
+		Map<String, String> filters = new HashMap<String, String>();
+		filters.put("tag", "forex");
+		List<Integer> taskIds = new ArrayList<Integer>(Arrays.asList(openml.taskList(filters).getTaskIds()));
+		taskIds.removeAll(Arrays.asList(s.getTasks()));
+		openml.studyAttach(studyId, taskIds);
+	}
+	
 	private static void generateStudy() throws Exception {
-
 		Map<String, String> filters = new HashMap<String, String>();
 		filters.put("tag", "forex");
 		Set<Integer> taskIds = new HashSet<Integer>(Arrays.asList(openml.taskList(filters).getTaskIds()));
-		
+		System.out.println(taskIds.size());
 		Integer[] taskIdsArray = taskIds.toArray(new Integer[taskIds.size()]);
 		Study s = new Study("FOREX", "Forex", "Contains currency trading tasks, for various valuta pairs.", null, taskIdsArray, null);
 		int studyId = openml.studyUpload(s);
 		System.out.println("study id: " + studyId);
+	}
+	
+	private static Triple<String, String, String> splitName(String nameVanilla) {
+		String[] nameParts = nameVanilla.split("_")[1].split("-");
+		String pair = nameParts[0].substring(0, 3) + '/' + nameParts[0].substring(3);
+		
+		return new ImmutableTriple<String, String, String>(pair, nameParts[1], nameParts[2]);
 	}
 }
