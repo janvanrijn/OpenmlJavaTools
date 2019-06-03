@@ -8,6 +8,7 @@ import java.util.Map;
 import java.util.Set;
 
 import org.openml.apiconnector.algorithms.Conversion;
+import org.openml.apiconnector.io.ApiException;
 import org.openml.apiconnector.xml.DataSetDescription;
 import org.openml.apiconnector.xml.Study;
 import org.openml.apiconnector.xml.TaskInputs;
@@ -57,7 +58,12 @@ public class UploadDatasetFromDir {
 	private static void uploadDataMakeTasks() throws Exception {
 		Map<String, String> filters = new HashMap<String, String>();
 		filters.put("tag", "forex");
-		Set<String> dataNames = new HashSet<String>(Arrays.asList(openml.dataList(filters).getNames()));
+		
+		
+		Set<String> dataNames = new HashSet<String>();
+		try {
+			dataNames = new HashSet<String>(Arrays.asList(openml.dataList(filters).getNames()));
+		} catch(ApiException e) {}
 		
 		int counter = 0;
 		for (File dataset : DIRECTORY.listFiles()) {
