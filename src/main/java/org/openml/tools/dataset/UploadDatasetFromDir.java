@@ -7,6 +7,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
+import org.openml.apiconnector.algorithms.Conversion;
 import org.openml.apiconnector.xml.DataSetDescription;
 import org.openml.apiconnector.xml.Study;
 import org.openml.apiconnector.xml.TaskInputs;
@@ -20,7 +21,7 @@ public class UploadDatasetFromDir {
 	private static final String APIKEY = "d488d8afd93b32331cf6ea9d7003d4c3";
 	private static final OpenmlWekaConnector openml = new OpenmlWekaConnector(SERVER, APIKEY);
 	
-	private static final File DIRECTORY = new File("/Users/janvanrijn/data/arff_forex");
+	private static final File DIRECTORY = new File("/home/janvanrijn/data/arff_forex");
 	private static final String DESCRIPTION = "**Source**: Dukascopy Historical Data Feed https://www.dukascopy.com/swiss/english/marketwatch/historical/\n" + 
 			"**Edited by**: Fabian Schut\n" + 
 			" \n" + 
@@ -58,9 +59,12 @@ public class UploadDatasetFromDir {
 		filters.put("tag", "forex");
 		Set<String> dataNames = new HashSet<String>(Arrays.asList(openml.dataList(filters).getNames()));
 		
+		int counter = 0;
 		for (File dataset : DIRECTORY.listFiles()) {
 			String nameVanilla = dataset.getName().split("\\.")[0];
+			Conversion.log("OK", "Upload", "Uploading " + nameVanilla + "(" + ++counter + " / " + DIRECTORY.listFiles().length + ")");
 			if (dataNames.contains(nameVanilla)) {
+				Conversion.log("OK", "Skip", "Skipping " + nameVanilla + " - already uploaded");
 				continue;
 			}
 			
