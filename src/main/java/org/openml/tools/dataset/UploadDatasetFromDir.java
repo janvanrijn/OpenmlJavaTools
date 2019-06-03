@@ -1,8 +1,11 @@
 package org.openml.tools.dataset;
 
 import java.io.File;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 
 import org.openml.apiconnector.xml.DataSetDescription;
 import org.openml.apiconnector.xml.Study;
@@ -29,7 +32,7 @@ public class UploadDatasetFromDir {
 			"The class attribute is the direction of the mean of the $type_Bid and the $type_Ask of the following $interval,\n" + 
 			"relative to the $type_Bid and $type_Ask mean of the current minute.\n" + 
 			"This means the class attribute is True when the mean $type price is going up the following $interval,\n" + 
-			"and the class attribute is False when the mean $type price is going down the following $interval.\n" + 
+			"and the class attribute is False when the mean $type price is going down (or stays the same) the following $interval.\n" + 
 			"$note" +
 			"# Attributes \n" +
 			"`Timestamp`: The time of the current data point (Europe/Amsterdam)\n" +
@@ -37,22 +40,33 @@ public class UploadDatasetFromDir {
 			"`Bid_High`: The highest bid price during this time interval\n" +
 			"`Bid_Low`: The lowest bid price during this time interval\n" +
 			"`Bid_Close`: The bid price at the end of this time interval\n" +
-			"`Bid_Volume`: Bid Volume\n" +
+			"`Bid_Volume`: The number of times the Bid Price changed within this time interval\n" +
 			"`Ask_Open`: The ask price at the start of this time interval\n" +
 			"`Ask_High`: The highest ask price during this time interval\n" +
 			"`Ask_Low`: The lowest ask price during this time interval\n" +
 			"`Ask_Close`: The ask price at the end of this time interval\n" +
-			"`Ask_Volume`: Ask Volume\n" +
+			"`Ask_Volume`: The number of times the Ask Price changed within this time interval\n" +
 			"`Class`: Whether the average price will go up during the next interval";
 	
 	public static void main(String[] args) throws Exception {
-		List<Integer> taskIds = new ArrayList<Integer>(); 
+		uploadDataMakeTasks();
+		generateStudy();
+	}
+	
+	private static void uploadDataMakeTasks() throws Exception {
+		Map<String, String> filters = new HashMap<String, String>();
+		filters.put("tag", "forex");
+		Set<String> dataNames = new HashSet<String>(Arrays.asList(openml.dataList(filters).getNames()));
+		
 		for (File dataset : DIRECTORY.listFiles()) {
-			
 			String nameVanilla = dataset.getName().split("\\.")[0];
+			if (dataNames.contains(nameVanilla)) {
+				continue;
+			}
+			
 			String[] nameParts = nameVanilla.split("_")[1].split("-");
 			String pair = nameParts[0].substring(0, 3) + '/' + nameParts[0].substring(3);
-			String note = nameParts[2].contentEquals("Close") ? "" : "**Note that this is a hypothetical task, ment for scientific purposes only. Realistic trade strategies can only be applied to predictions on 'Close'-attributes (also available).\n"; 
+			String note = nameParts[2].contentEquals("Close") ? "" : "**Note that this is a hypothetical task, meant for scientific purposes only. Realistic trade strategies can only be applied to predictions on 'Close'-attributes (also available).\n"; 
 			String description = DESCRIPTION.replace("$pair", pair.toUpperCase()).replace("$interval", nameParts[1]).replace("$type", nameParts[2]).replace("$note", note);
 			
 			DataSetDescription dsd = new DataSetDescription(nameVanilla, description, "arff", "Class");
@@ -70,13 +84,19 @@ public class UploadDatasetFromDir {
 				new Input("target_feature", dsd.getDefault_target_attribute()),
 			};
 			TaskInputs ti = new TaskInputs(null, 1, inputs, TAGS);
-			int taskId = openml.taskUpload(ti);
-			taskIds.add(taskId);
+			openml.taskUpload(ti);
 		}
+	}
+	
+	private static void generateStudy() throws Exception {
+
+		Map<String, String> filters = new HashMap<String, String>();
+		filters.put("tag", "forex");
+		Set<Integer> taskIds = new HashSet<Integer>(Arrays.asList(openml.taskList(filters).getTaskIds()));
+		
 		Integer[] taskIdsArray = taskIds.toArray(new Integer[taskIds.size()]);
 		Study s = new Study("FOREX", "Forex", "Contains currency trading tasks, for various valuta pairs.", null, taskIdsArray, null);
 		int studyId = openml.studyUpload(s);
 		System.out.println("study id: " + studyId);
-		
 	}
 }
