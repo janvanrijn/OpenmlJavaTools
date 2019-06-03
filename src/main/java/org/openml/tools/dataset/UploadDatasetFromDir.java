@@ -9,6 +9,8 @@ import java.util.Set;
 
 import org.openml.apiconnector.algorithms.Conversion;
 import org.openml.apiconnector.io.ApiException;
+import org.openml.apiconnector.xml.Data;
+import org.openml.apiconnector.xml.Data.DataSet;
 import org.openml.apiconnector.xml.DataSetDescription;
 import org.openml.apiconnector.xml.Study;
 import org.openml.apiconnector.xml.TaskInputs;
@@ -60,20 +62,18 @@ public class UploadDatasetFromDir {
 		filters.put("tag", "forex");
 		
 		
-		Set<String> dataNames = new HashSet<String>();
+		Map<String, Integer> dataNameId = new HashMap<String, Integer>();
 		try {
-			dataNames = new HashSet<String>(Arrays.asList(openml.dataList(filters).getNames()));
+			Data data = openml.dataList(filters);
+			for (DataSet ds : data.getData()) {
+				dataNameId.put(ds.getName(), ds.getDid());
+			}
 		} catch(ApiException e) {}
 		
 		int counter = 0;
 		for (File dataset : DIRECTORY.listFiles()) {
+			// assemble some basic properties
 			String nameVanilla = dataset.getName().split("\\.")[0];
-			Conversion.log("OK", "Upload", "Uploading " + nameVanilla + "(" + ++counter + " / " + DIRECTORY.listFiles().length + ")");
-			if (dataNames.contains(nameVanilla)) {
-				Conversion.log("OK", "Skip", "Skipping " + nameVanilla + " - already uploaded");
-				continue;
-			}
-			
 			String[] nameParts = nameVanilla.split("_")[1].split("-");
 			String pair = nameParts[0].substring(0, 3) + '/' + nameParts[0].substring(3);
 			String note = nameParts[2].contentEquals("Close") ? "" : "**Note that this is a hypothetical task, meant for scientific purposes only. Realistic trade strategies can only be applied to predictions on 'Close'-attributes (also available).\n"; 
@@ -84,17 +84,34 @@ public class UploadDatasetFromDir {
 			for (String tag : TAGS) {
 				dsd.addTag(tag);
 			}
-			int did = openml.dataUpload(dsd, dataset);
 			
-			// automatically processes and activates dataset
-			new ProcessDataset(openml, did, null);
+			Conversion.log("OK", "Upload", "Uploading " + nameVanilla + "(" + ++counter + " / " + DIRECTORY.listFiles().length + ")");
+			
+			// obtain data id, skip if it was already uploaded
+			int did;
+			if (dataNameId.containsKey(nameVanilla)) {
+				did = dataNameId.get(nameVanilla);
+				Conversion.log("OK", "Skip", "Skipping data upload of " + nameVanilla + " - did = " + did);
+			} else {
+				did = openml.dataUpload(dsd, dataset);
+			}
+			
+			// automatically processes and activates dataset. catch in case the dataset is already activated
+			try {
+				new ProcessDataset(openml, did, null);
+			} catch(ApiException e) {}
+			
 			Input[] inputs = {
 				new Input("source_data", "" + did),
 				new Input("estimation_procedure", "28"),
 				new Input("target_feature", dsd.getDefault_target_attribute()),
 			};
 			TaskInputs ti = new TaskInputs(null, 1, inputs, TAGS);
-			openml.taskUpload(ti);
+			
+			// obtain task id, catch if it was already uploaded
+			try {
+				openml.taskUpload(ti);
+			} catch(ApiException ae) {}
 		}
 	}
 	
